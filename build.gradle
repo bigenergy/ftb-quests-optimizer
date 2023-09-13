@@ -166,11 +166,13 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
-    implementation name: "architectury-6.5.77-forge"
+    //implementation name: "architectury-6.5.77-forge"
 
-    implementation fg.deobf("curse.maven:ftb-quests-forge-289412:4710249")
-    implementation fg.deobf("curse.maven:ftb-teams-forge-404468:4611938")
-    implementation fg.deobf("curse.maven:ftb-library-forge-404465:4661834")
+    implementation fg.deobf("curse.maven:ftb-quests-forge-289412:4743499")
+    implementation fg.deobf("curse.maven:ftb-teams-forge-404468:4623116")
+    implementation fg.deobf("curse.maven:ftb-library-forge-404465:4720056")
+
+    implementation fg.deobf("curse.maven:architectury-api-419699:4663010")
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
