@@ -17,8 +17,8 @@ import java.util.function.Predicate;
 
 @Mixin(ItemTask.class)
 public class ItemTackMixin extends Task implements Predicate<ItemStack> {
-    public ItemTackMixin(long id, Quest quest) {
-        super(id, quest);
+    public ItemTackMixin(Quest q) {
+        super(q);
     }
 
     @Shadow
@@ -33,7 +33,7 @@ public class ItemTackMixin extends Task implements Predicate<ItemStack> {
     @Shadow
     public long count;
     @Shadow
-    private ItemStack itemStack;
+    public ItemStack item;
 
     @Shadow
     public ItemStack insert(TeamData teamData, ItemStack stack, boolean simulate) {
@@ -41,7 +41,7 @@ public class ItemTackMixin extends Task implements Predicate<ItemStack> {
             long add = Math.min(stack.getCount(), count - teamData.getProgress(this));
 
             if (add > 0L) {
-                if (!simulate && teamData.getFile().isServerSide()) {
+                if (!simulate && teamData.file.isServerSide()) {
                     teamData.addProgress(this, add);
                 }
 
@@ -56,7 +56,7 @@ public class ItemTackMixin extends Task implements Predicate<ItemStack> {
 
     @Override
     public void submitTask(TeamData teamData, ServerPlayer player, ItemStack craftedItem) {
-        if (taskScreenOnly || teamData.isCompleted(this) || itemStack.getItem() instanceof MissingItem || craftedItem.getItem() instanceof MissingItem) {
+        if (taskScreenOnly || teamData.isCompleted(this) || item.getItem() instanceof MissingItem || craftedItem.getItem() instanceof MissingItem) {
             return;
         }
 
