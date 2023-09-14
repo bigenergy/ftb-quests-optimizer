@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "ftbqoptimizer",
+  "version": "${version}",
+  "name": "FTBQuestsOptimizer",
+  "description": "",
+  "authors": [
+    "Big_Energy"
+  ],
+  "contact": {
+    "homepage": "https://github.com/bigenergy/ftb-quests-optimizer",
+    "sources": "https://github.com/bigenergy/ftb-quests-optimizer"
+  },
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.bigenergy.ftbquestsoptimizer.fabric.FTBQuestsOptimizerFabric"
+    ]
+  },
+  "depends": {
+    "fabric": "*",
+    "minecraft": ">=1.19.2",
+    "ftbquests": "*"
+  },
+  "mixins": [
+    "ftbqoptimizer.mixins.json"
+  ]
+}

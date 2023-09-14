@@ -1,4 +1,4 @@
-package com.bigenergy.ftbquestsoptimizer.mixins;
+package com.bigenergy.ftbquestsoptimizer.mixin;
 
 import dev.architectury.hooks.level.entity.PlayerHooks;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;

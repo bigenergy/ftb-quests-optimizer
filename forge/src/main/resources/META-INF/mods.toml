@@ -1,0 +1,31 @@
+modLoader = "javafml"
+loaderVersion = "[43,)"
+license = "MIT"
+
+[[mods]]
+modId = "ftbqoptimizer"
+version = "${version}"
+displayName = "FTBQuestsOptimizer"
+displayURL = "https://github.com/bigenergy/ftb-quests-optimizer"
+authors = "Big_Energy"
+
+[[dependencies.ftbqoptimizer]]
+modId = "forge"
+mandatory = true
+versionRange = "[43,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.ftbqoptimizer]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.19.2,1.20)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.ftbqoptimizer]]
+modId = "ftbquests"
+mandatory = true
+versionRange = "*"
+ordering = "AFTER"
+side = "BOTH"
