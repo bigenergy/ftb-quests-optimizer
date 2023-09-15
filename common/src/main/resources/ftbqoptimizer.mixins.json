@@ -1,12 +1,12 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.bigenergy.ftbquestsoptimizer.mixins",
+  "package": "com.bigenergy.ftbquestsoptimizer.mixin",
   "compatibilityLevel": "JAVA_8",
   "refmap": "FTBQuestsOptimizer.refmap.json",
   "mixins": [
     "FTBQuestsInventoryListenerMixin",
-    "ItemTackMixin"
+    "ItemTaskMixin"
   ],
   "client": [
   ],

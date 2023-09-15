@@ -1,4 +1,4 @@
-package com.bigenergy.ftbquestsoptimizer.mixins;
+package com.bigenergy.ftbquestsoptimizer.mixin;
 
 import dev.ftb.mods.ftblibrary.config.Tristate;
 import dev.ftb.mods.ftbquests.item.MissingItem;
@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.function.Predicate;
 
 @Mixin(ItemTask.class)
-public class ItemTackMixin extends Task implements Predicate<ItemStack> {
-    public ItemTackMixin(long id, Quest quest) {
+public class ItemTaskMixin extends Task implements Predicate<ItemStack> {
+    public ItemTaskMixin(long id, Quest quest) {
         super(id, quest);
     }
 
