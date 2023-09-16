@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import java.util.List;
 import java.util.function.Predicate;
 
-@Mixin(ItemTask.class)
+@Mixin(value = ItemTask.class, remap = false)
 public class ItemTaskMixin extends Task implements Predicate<ItemStack> {
     public ItemTaskMixin(long id, Quest quest) {
         super(id, quest);
