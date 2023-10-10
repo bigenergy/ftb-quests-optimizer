@@ -26,32 +26,6 @@ public class FTBQuestsInventoryListenerMixin {
         this.player = player;
     }
 
-//    private boolean tryTick()
-//    {
-//        int skipTicksAmount = 5;
-//        if (skipTicksAmount <= 0)
-//            return true;
-//
-//        this.ticksSkipped++;
-//        if (this.ticksSkipped > skipTicksAmount)
-//        {
-//            this.ticksSkipped = 0;
-//            return true;
-//        }
-//
-//        return false;
-//    }
-
-//    @Inject(
-//            method = "detect",
-//            at={@At(value="HEAD")}
-//    )
-//    private static void gpu$fixFTBQLags(ServerPlayer player, ItemStack craftedItem, long sourceTask, CallbackInfo ci) {
-//        if (!tryTick()) {
-//            return;
-//        }
-//    }
-
     /**
      * @author Big_Energy
      * @reason performance fix
@@ -76,26 +50,5 @@ public class FTBQuestsInventoryListenerMixin {
                 .filter(task -> task.id != sourceTask && data.canStartTasks(task.getQuest()))
                 .forEach(task -> task.submitTask(data, player, craftedItem)));
     }
-
-
-//    public void slotChanged(AbstractContainerMenu container, int index, ItemStack stack) {
-//        if (!this.tryTick()) {
-//            return;
-//        }
-//        if (!stack.isEmpty() && container.getSlot(index).container == player.getInventory()) {
-//            int slotNum = container.getSlot(index).getContainerSlot();
-//            if (slotNum >= 0 && slotNum < player.getInventory().items.size()) {
-//                // Only checking for items in the main inventory & hotbar
-//                // Armor slots can contain items with rapidly changing NBT (especially powered modded armor)
-//                //  which can trigger a lot of unnecessary inventory scans
-//                int delay = Mth.clamp(ServerQuestFile.INSTANCE.getDetectionDelay(), 0, 200);
-//                if (delay == 0) {
-//                    FTBQuestsInventoryListener.detect(player, ItemStack.EMPTY, 0);
-//                } else {
-//                    DeferredInventoryDetection.scheduleInventoryCheck(player, delay);
-//                }
-//            }
-//        }
-//    }
 
 }
