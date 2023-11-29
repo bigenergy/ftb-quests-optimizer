@@ -56,7 +56,7 @@ public class ItemTaskMixin extends Task implements Predicate<ItemStack> {
 
     @Override
     public void submitTask(TeamData teamData, ServerPlayer player, ItemStack craftedItem) {
-        if (taskScreenOnly || teamData.isCompleted(this) || itemStack.getItem() instanceof MissingItem || craftedItem.getItem() instanceof MissingItem) {
+        if (taskScreenOnly || !checkTaskSequence(teamData) || teamData.isCompleted(this) || itemStack.getItem() instanceof MissingItem || craftedItem.getItem() instanceof MissingItem) {
             return;
         }
 
@@ -66,7 +66,7 @@ public class ItemTaskMixin extends Task implements Predicate<ItemStack> {
                     teamData.addProgress(this, craftedItem.getCount());
                 }
             } else {
-                //long c = Math.min(count, player.getInventory().items.stream().filter(this).mapToLong(ItemStack::getCount).sum());
+                //long c = Math.min(count, player.getInventory().items.stream().filter(this).mapToLong(ItemStack::getCount).sum()); <-- BAD
 
                 long c = Math.min(count, 0L);
                 for (ItemStack stack : player.getInventory().items) {
