@@ -11,4 +11,6 @@ If you want better performance, install my second mod, both mods will practicall
 
 Feel free to write about all problems and suggestions on my github! Good luck!
 
-<a href="https://curseforge.com/minecraft/mc-mods/ftb-quests-optimizer">CurseForge Link</a>
+# Download
+<a href="https://curseforge.com/minecraft/mc-mods/ftb-quests-optimizer">Download from CurseForge</a><br>
+<a href="https://modrinth.com/mod/ftb-quests-optimizer">Download from Modrinth</a>
