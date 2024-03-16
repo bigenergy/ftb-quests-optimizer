@@ -1,18 +1,14 @@
 package com.bigenergy.ftbquestsoptimizer.mixin;
 
-import dev.architectury.hooks.level.entity.PlayerHooks;
-import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
-import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.util.FTBQuestsInventoryListener;
-import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
-import dev.ftb.mods.ftbteams.api.Team;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-
-import java.util.Optional;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = FTBQuestsInventoryListener.class, remap = false)
 public class FTBQuestsInventoryListenerMixin {
@@ -20,35 +16,36 @@ public class FTBQuestsInventoryListenerMixin {
     @Shadow
     public final ServerPlayer player;
 
-   // private int ticksSkipped;
+    private int ticksSkipped;
 
     public FTBQuestsInventoryListenerMixin(ServerPlayer player) {
         this.player = player;
     }
 
-    /**
-     * @author Big_Energy
-     * @reason performance fix
-     */
-    @Overwrite
-    public static void detect(ServerPlayer player, ItemStack craftedItem, long sourceTask) {
-        ServerQuestFile file = ServerQuestFile.INSTANCE;
+    private boolean tryTick()
+    {
+        int skipTicksAmount = 5;
+        if (skipTicksAmount <= 0)
+            return true;
 
-        if (file == null || PlayerHooks.isFake(player)) {
-            return;
+        this.ticksSkipped++;
+        if (this.ticksSkipped > skipTicksAmount)
+        {
+            this.ticksSkipped = 0;
+            return true;
         }
 
-        Optional<Team> team = FTBTeamsAPI.api().getManager().getTeamForPlayer(player);
+        return false;
+    }
 
-        if (team.isEmpty()) {
+    @Inject(
+        method = "slotChanged",
+        at={@At(value="HEAD")}
+    )
+    public void slotChanged(AbstractContainerMenu menu, int index, ItemStack stack, CallbackInfo ci) {
+        if (!this.tryTick()) {
             return;
         }
-
-        TeamData data = file.getNullableTeamData(team.get().getTeamId());
-
-        file.withPlayerContext(player, () -> file.getSubmitTasks().stream() // WARN: NOT USE ASYNC! -> SERVER CRASH EVERY 5 MIN
-                .filter(task -> task.id != sourceTask && data.canStartTasks(task.getQuest()))
-                .forEach(task -> task.submitTask(data, player, craftedItem)));
     }
 
 }
