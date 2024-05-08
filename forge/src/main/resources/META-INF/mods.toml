@@ -1,6 +1,6 @@
 modLoader = "javafml"
 loaderVersion = "[46,)"
-#issueTrackerURL = ""
+issueTrackerURL = "https://github.com/bigenergy/ftb-quests-optimizer/issues"
 license = "MIT"
 
 [[mods]]

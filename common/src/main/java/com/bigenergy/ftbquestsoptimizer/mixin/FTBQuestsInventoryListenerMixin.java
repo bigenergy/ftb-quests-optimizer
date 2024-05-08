@@ -8,7 +8,6 @@ import dev.ftb.mods.ftbquests.util.FTBQuestsInventoryListener;
 import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
 import dev.ftb.mods.ftbteams.api.Team;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -78,20 +77,6 @@ public class FTBQuestsInventoryListenerMixin {
                     });
                 }
             }
-        }
-    }
-
-    /**
-     * @author Big_Energy
-     * @reason performance fix
-     */
-    @Overwrite
-    public void slotChanged(AbstractContainerMenu container, int index, ItemStack stack) {
-        if (!tryTick()) {
-            return;
-        }
-        if (!stack.isEmpty() && container.getSlot(index).container == player.getInventory()) {
-            detect(player, ItemStack.EMPTY, 0);
         }
     }
 
