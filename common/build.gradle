@@ -7,6 +7,7 @@ dependencies {
     // Do NOT use other classes from fabric loader
     modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
     modImplementation "dev.ftb.mods:ftb-quests:${rootProject.ftb_quests_version}"
+    modImplementation "dev.ftb.mods:ftb-library:${rootProject.ftb_library_version}"
 }
 
 publishing {
