@@ -16,23 +16,13 @@ public class FTBQuestsOptimizer {
 
     private static final String[] DEFAULT_CONFIG = {
             "Default config file that will be copied to instance's config/ftbqoptimizer.snbt location",
-            "Copy values you wish to override in here",
-            "Example:",
-            "",
-            "{",
-            "	misc: {",
-            "		enderchest: {",
-            "			enabled: false",
-            "		}",
-            "	}",
-            "}",
     };
 
     public static void init() {
         LOGGER.info("Enabling FTB Quests Optimizer");
 
         Path configFilePath = Platform.getConfigFolder().resolve(CONFIG_FILE);
-        Path defaultConfigFilePath = Platform.getConfigFolder().resolve("../defaultconfigs/ftbessentials-server.snbt");
+        Path defaultConfigFilePath = Platform.getConfigFolder().resolve("../defaultconfigs/ftbqoptimizer.snbt");
 
         FTBQuestsOptimizerConfig.CONFIG.load(configFilePath, defaultConfigFilePath, () -> DEFAULT_CONFIG);
     }
