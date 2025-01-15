@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "id": "ftbqopt",
+  "version": "${version}",
+  "name": "FTBQuestsOptimizer",
+  "description": "Performance fix for FTBQuests",
+  "authors": [
+    "Big_Energy"
+  ],
+  "contact": {
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/ftb-quests-optimizer"
+  },
+  "license": "MIT",
+  "icon": "assets/ftbqopt/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.bigenergy.ftbqopt.fabric.FTBQuestsOptimizerFabric"
+    ],
+    "client": [
+      "com.bigenergy.ftbqopt.fabric.client.FTBQuestsOptimizerFabricClient"
+    ]
+  },
+  "mixins": [
+    "ftbqopt.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.8",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}

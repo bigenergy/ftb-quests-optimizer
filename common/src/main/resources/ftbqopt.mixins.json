@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "com.bigenergy.ftbqopt.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+  ],
+  "mixins": [
+    "FTBQuestsInventoryListenerMixin",
+    "ItemTaskMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
