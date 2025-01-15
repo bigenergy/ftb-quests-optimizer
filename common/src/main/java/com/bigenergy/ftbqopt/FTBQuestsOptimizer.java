@@ -9,7 +9,7 @@ import java.nio.file.Path;
 
 public class FTBQuestsOptimizer {
 
-    public static final String MODID = "ftbqoptimizer";
+    public static final String MODID = "ftbqopt";
     public static final Logger LOGGER = LogManager.getLogger("FTB Quests Optimizer");
 
     public static final String CONFIG_FILE = MODID + ".snbt";
