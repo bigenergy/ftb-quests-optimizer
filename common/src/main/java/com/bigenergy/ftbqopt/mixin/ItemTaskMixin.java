@@ -1,110 +1,125 @@
 package com.bigenergy.ftbqopt.mixin;
 
-import dev.ftb.mods.ftblibrary.config.Tristate;
-import dev.ftb.mods.ftbquests.item.MissingItem;
-import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
-import dev.ftb.mods.ftbquests.quest.task.Task;
-import dev.ftb.mods.ftbquests.quest.task.TaskType;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
-import java.util.function.Predicate;
 
-@Mixin(value = ItemTask.class, remap = false)
-public class ItemTaskMixin extends Task implements Predicate<ItemStack> {
-    public ItemTaskMixin(long id, Quest quest) {
-        super(id, quest);
+/**
+ * Optimization:
+ * - Cache getValidDisplayItems() by signature (item + components + matchComponents).
+ * - submitTask(): aggregated consumption, single addProgress() call, early exit.
+ */
+@Mixin(ItemTask.class)
+public abstract class ItemTaskMixin {
+
+    @Shadow private ItemStack itemStack;
+    @Shadow private long count;
+    @Shadow private ItemMatchingSystem.ComponentMatchType matchComponents;
+
+    @Unique private List<ItemStack> ftbqopt$validCache;
+    @Unique private int ftbqopt$validSig;
+
+    @Unique
+    private int ftbqopt$signature() {
+        int h = System.identityHashCode(itemStack.getItem());
+        h = 31 * h + itemStack.getComponents().hashCode();
+        h = 31 * h + matchComponents.ordinal();
+        return h;
     }
 
-    @Shadow
-    public TaskType getType() {
-        return null;
+    @Inject(
+            method = "readData(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/core/HolderLookup$Provider;)V",
+            at = @At("TAIL")
+    )
+    private void ftbqopt$invalidateOnRead(CallbackInfo ci) {
+        ftbqopt$validCache = null;
     }
 
-    @Shadow
-    public boolean taskScreenOnly;
-    @Shadow
-    public Tristate onlyFromCrafting;
-    @Shadow
-    public long count;
-    @Shadow
-    private ItemStack itemStack;
-
-    @Shadow
-    public ItemStack insert(TeamData teamData, ItemStack stack, boolean simulate) {
-        if (!teamData.isCompleted(this) && consumesResources() && test(stack)) {
-            long add = Math.min(stack.getCount(), count - teamData.getProgress(this));
-
-            if (add > 0L) {
-                if (!simulate && teamData.getFile().isServerSide()) {
-                    teamData.addProgress(this, add);
-                }
-
-                ItemStack copy = stack.copy();
-                copy.setCount((int) (stack.getCount() - add));
-                return copy;
-            }
-        }
-
-        return stack;
+    @Inject(
+            method = "setStackAndCount(Lnet/minecraft/world/item/ItemStack;I)Ldev/ftb/mods/ftbquests/quest/task/ItemTask;",
+            at = @At("TAIL")
+    )
+    private void ftbqopt$invalidateOnSet(CallbackInfoReturnable<ItemTask> cir) {
+        ftbqopt$validCache = null;
     }
 
-    @Override
-    public void submitTask(TeamData teamData, ServerPlayer player, ItemStack craftedItem) {
-        if (taskScreenOnly || !checkTaskSequence(teamData) || teamData.isCompleted(this) || itemStack.getItem() instanceof MissingItem || craftedItem.getItem() instanceof MissingItem) {
+    @Inject(method = "getValidDisplayItems", at = @At("HEAD"), cancellable = true)
+    private void ftbqopt$getValidDisplayItemsCached(CallbackInfoReturnable<List<ItemStack>> cir) {
+        int sig = ftbqopt$signature();
+        if (ftbqopt$validCache != null && sig == ftbqopt$validSig) {
+            cir.setReturnValue(ftbqopt$validCache);
             return;
         }
-
-        if (!consumesResources()) {
-            if (onlyFromCrafting.get(false)) {
-                if (!craftedItem.isEmpty() && test(craftedItem)) {
-                    teamData.addProgress(this, craftedItem.getCount());
-                }
-            } else {
-                //long c = Math.min(count, player.getInventory().items.stream().filter(this).mapToLong(ItemStack::getCount).sum()); <-- BAD
-
-                long c = Math.min(count, 0L);
-                for (ItemStack stack : player.getInventory().items) {
-                    if (this.test(stack)) {
-                        c += stack.getCount();
-                    }
-                }
-
-                long progress = teamData.getProgress(this);
-                if (c > progress) {
-                    teamData.setProgress(this, c);
-                }
-            }
-        } else if (craftedItem.isEmpty()) {
-            boolean changed = false;
-            List<ItemStack> inventory = player.getInventory().items;
-            int inventorySize = inventory.size();
-            for (int i = 0; i < inventorySize; i++) {
-                ItemStack stack = inventory.get(i);
-                ItemStack stack1 = insert(teamData, stack, false);
-
-                if (stack != stack1) {
-                    changed = true;
-                    inventory.set(i, stack1.isEmpty() ? ItemStack.EMPTY : stack1);
-                }
-            }
-
-            if (changed) {
-                player.getInventory().setChanged();
-                if (player.containerMenu != null) {
-                    player.containerMenu.broadcastChanges();
-                }
-            }
-        }
+        List<ItemStack> res = ItemMatchingSystem.INSTANCE.getAllMatchingStacks(itemStack);
+        ftbqopt$validCache = List.copyOf(res); // иммутабельная копия
+        ftbqopt$validSig = sig;
+        cir.setReturnValue(ftbqopt$validCache);
     }
 
-    @Shadow
-    public boolean test(ItemStack itemStack) {
-        return false;
+    @Inject(
+            method = "submitTask(Ldev/ftb/mods/ftbquests/quest/TeamData;Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;)V",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void ftbqopt$aggregateSubmit(TeamData teamData, ServerPlayer player, ItemStack craftedItem, CallbackInfo ci) {
+        ItemTask self = (ItemTask)(Object)this;
+
+        if (self.isTaskScreenOnly()
+                || teamData.isCompleted(self)
+                || (itemStack.getItem() instanceof dev.ftb.mods.ftbquests.item.MissingItem)
+                || (craftedItem.getItem() instanceof dev.ftb.mods.ftbquests.item.MissingItem)
+                // вместо checkTaskSequence(...) — эквивалентная публичная проверка
+                || !teamData.canStartTasks(self.getQuest())) {
+            return; // не отменяем — пусть оригинал решит
+        }
+
+        // оптимизируем только ветку consumesResources == true и не из крафта
+        if (!self.consumesResources() || !craftedItem.isEmpty()) return;
+
+        long progress = teamData.getProgress(self);
+        long remaining = count - progress;
+        if (remaining <= 0L) { ci.cancel(); return; }
+
+        var inv = player.getInventory().items;
+        boolean changed = false;
+        long taken = 0L;
+
+        for (int i = 0; i < inv.size() && remaining > 0; i++) {
+            ItemStack s = inv.get(i);
+            if (s.isEmpty() || !self.test(s)) continue;
+
+            int canTake = (int)Math.min(s.getCount(), remaining);
+            if (canTake <= 0) continue;
+
+            s.shrink(canTake);
+            if (s.isEmpty()) inv.set(i, ItemStack.EMPTY);
+
+            changed = true;
+            taken += canTake;
+            remaining -= canTake;
+        }
+
+        if (taken > 0) {
+            if (teamData.getFile().isServerSide()) {
+                teamData.addProgress(self, taken); // one call
+            }
+            if (changed) {
+                player.getInventory().setChanged();
+                player.containerMenu.broadcastChanges();
+            }
+        }
+
+        ci.cancel();
     }
 }
