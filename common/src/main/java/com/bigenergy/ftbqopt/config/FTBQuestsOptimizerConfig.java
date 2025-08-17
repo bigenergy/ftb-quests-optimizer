@@ -9,12 +9,20 @@ public interface FTBQuestsOptimizerConfig {
     SNBTConfig CONFIG = SNBTConfig.create(FTBQuestsOptimizer.MODID)
             .comment("FTBQuestOptimizer config file", "If you're a modpack maker, edit defaultconfigs/ftbqoptimizer-server.snbt instead");
 
-    BooleanValue DETECT_OPTIMIZATION = CONFIG.addBoolean("detect_optimization", true)
-            .comment("Enable optimization of quest completion detection");
+    BooleanValue DEBOUNCE = CONFIG.addBoolean("detect.debounce", true)
+            .comment("Debounce detection so repeated slot changes schedule only one check.");
 
-    IntValue SKIP_TICKS_AMOUNT = CONFIG.addInt("skip_ticks_amount", 5).range(0, 100)
-            .comment("Number of tick skips for checking player inventories, 0 to disable tick skipping. Experiment and find the best value for you!");
+    IntValue DELAY_OVERRIDE = CONFIG.addInt("detect.delay_override", -1).range(-1, 200)
+            .comment("Override FTBQ detection delay in ticks. -1 = use FTBQ's own value.");
 
+    BooleanValue IGNORE_NBT_ONLY = CONFIG.addBoolean("detect.ignore_nbt_only_changes", true)
+            .comment("Ignore slot changes where only NBT changed (same item & count).");
+
+    BooleanValue AGGREGATE_CONSUME = CONFIG.addBoolean("consume.aggregate", true)
+            .comment("Aggregate item removal and call addProgress() once.");
+
+    IntValue MAX_SLOTS_PER_PASS = CONFIG.addInt("consume.max_slots_per_pass", 36).range(9, 200)
+            .comment("Limit number of main+hotbar slots scanned per pass to avoid long stalls.");
 
 
 }

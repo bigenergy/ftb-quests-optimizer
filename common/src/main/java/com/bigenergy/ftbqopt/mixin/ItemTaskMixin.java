@@ -1,5 +1,6 @@
 package com.bigenergy.ftbqopt.mixin;
 
+import com.bigenergy.ftbqopt.config.FTBQuestsOptimizerConfig;
 import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
@@ -18,9 +19,9 @@ import java.util.List;
 /**
  * Optimization:
  * - Cache getValidDisplayItems() by signature (item + components + matchComponents).
- * - submitTask(): aggregated consumption, single addProgress() call, early exit.
+ * - submitTask(): aggregated consumption (config-controlled), single addProgress(), early exit.
  */
-@Mixin(ItemTask.class)
+@Mixin(value = ItemTask.class, remap = false)
 public abstract class ItemTaskMixin {
 
     @Shadow private ItemStack itemStack;
@@ -33,11 +34,12 @@ public abstract class ItemTaskMixin {
     @Unique
     private int ftbqopt$signature() {
         int h = System.identityHashCode(itemStack.getItem());
-        h = 31 * h + itemStack.getComponents().hashCode();
+        h = 31 * h + itemStack.getComponents().hashCode(); // 1.21+: data components вместо NBT
         h = 31 * h + matchComponents.ordinal();
         return h;
     }
 
+    // ---- кэш валидных стэков ----
     @Inject(
             method = "readData(Lnet/minecraft/nbt/CompoundTag;Lnet/minecraft/core/HolderLookup$Provider;)V",
             at = @At("TAIL")
@@ -67,24 +69,28 @@ public abstract class ItemTaskMixin {
         cir.setReturnValue(ftbqopt$validCache);
     }
 
+    // ---- агрегированное потребление под контролем конфига ----
     @Inject(
             method = "submitTask(Ldev/ftb/mods/ftbquests/quest/TeamData;Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/world/item/ItemStack;)V",
             at = @At("HEAD"),
             cancellable = true
     )
     private void ftbqopt$aggregateSubmit(TeamData teamData, ServerPlayer player, ItemStack craftedItem, CallbackInfo ci) {
+        // если фича выключена — даём оригиналу работать
+        if (!FTBQuestsOptimizerConfig.AGGREGATE_CONSUME.get()) return;
+
         ItemTask self = (ItemTask)(Object)this;
 
+        // быстрые выходы — как в оригинале
         if (self.isTaskScreenOnly()
                 || teamData.isCompleted(self)
                 || (itemStack.getItem() instanceof dev.ftb.mods.ftbquests.item.MissingItem)
                 || (craftedItem.getItem() instanceof dev.ftb.mods.ftbquests.item.MissingItem)
-                // вместо checkTaskSequence(...) — эквивалентная публичная проверка
                 || !teamData.canStartTasks(self.getQuest())) {
             return; // не отменяем — пусть оригинал решит
         }
 
-        // оптимизируем только ветку consumesResources == true и не из крафта
+        // оптимизируем только consumesResources && не из крафта
         if (!self.consumesResources() || !craftedItem.isEmpty()) return;
 
         long progress = teamData.getProgress(self);
@@ -95,11 +101,14 @@ public abstract class ItemTaskMixin {
         boolean changed = false;
         long taken = 0L;
 
-        for (int i = 0; i < inv.size() && remaining > 0; i++) {
+        final int limit = Math.max(1, FTBQuestsOptimizerConfig.MAX_SLOTS_PER_PASS.get());
+        final int maxSlots = Math.min(inv.size(), limit);
+
+        for (int i = 0; i < maxSlots && remaining > 0; i++) {
             ItemStack s = inv.get(i);
             if (s.isEmpty() || !self.test(s)) continue;
 
-            int canTake = (int)Math.min(s.getCount(), remaining);
+            int canTake = (int) Math.min(s.getCount(), remaining);
             if (canTake <= 0) continue;
 
             s.shrink(canTake);
@@ -110,16 +119,15 @@ public abstract class ItemTaskMixin {
             remaining -= canTake;
         }
 
-        if (taken > 0) {
-            if (teamData.getFile().isServerSide()) {
-                teamData.addProgress(self, taken); // one call
-            }
+        if (taken > 0 && teamData.getFile().isServerSide()) {
+            teamData.addProgress(self, taken); // ровно один вызов
             if (changed) {
                 player.getInventory().setChanged();
                 player.containerMenu.broadcastChanges();
             }
         }
 
+        // мы целиком обработали свою ветку — оригинал не нужен
         ci.cancel();
     }
 }

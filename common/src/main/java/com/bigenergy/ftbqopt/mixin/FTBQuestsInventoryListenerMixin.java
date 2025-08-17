@@ -1,5 +1,7 @@
 package com.bigenergy.ftbqopt.mixin;
 
+import com.bigenergy.ftbqopt.config.FTBQuestsOptimizerConfig;
+import com.bigenergy.ftbqopt.mixin.accessor.DeferredInventoryDetectionAccessor;
 import com.bigenergy.ftbqopt.util.DetectionDebouncer;
 import com.bigenergy.ftbqopt.util.LastSeenSlotCache;
 import dev.architectury.hooks.level.entity.PlayerHooks;
@@ -7,7 +9,6 @@ import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.task.Task;
 import dev.ftb.mods.ftbquests.util.FTBQuestsInventoryListener;
-import dev.ftb.mods.ftbquests.util.PlayerInventorySummary;
 import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -23,11 +24,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Optimization:
- * 1) Rewrite static detection() method: build PlayerInventorySummary only for the submit path and only if there are candidates.
- * 2) slotChanged(): early exits, "same item+count" filter (ignoring NBT noise), scheduling debounce.
- */
 @Mixin(FTBQuestsInventoryListener.class)
 public abstract class FTBQuestsInventoryListenerMixin {
 
@@ -41,7 +37,10 @@ public abstract class FTBQuestsInventoryListenerMixin {
             remap = true
     )
     private static void ftbqopt$optimizedDetect(ServerPlayer player, ItemStack craftedItem, long sourceTask, CallbackInfo ci) {
-        DetectionDebouncer.markCompleted(player); // remove "in queue" if it is a deferred call
+        // Снимаем "в очереди" только если дебаунс включён
+        if (FTBQuestsOptimizerConfig.DEBOUNCE.get()) {
+            DetectionDebouncer.markCompleted(player);
+        }
 
         ServerQuestFile file = ServerQuestFile.INSTANCE;
         if (file == null || PlayerHooks.isFake(player)) { ci.cancel(); return; }
@@ -54,7 +53,7 @@ public abstract class FTBQuestsInventoryListenerMixin {
             TeamData data = file.getNullableTeamData(team.getId());
             if (data == null || data.isLocked()) return;
 
-            // Prefilter: immediately cut off tasks that definitely won't start
+            // Предфильтр задач
             ArrayList<Task> candidates = new ArrayList<>(tasksToCheck.size());
             for (Task t : tasksToCheck) {
                 if (t.id != sourceTask && data.canStartTasks(t.getQuest())) {
@@ -64,9 +63,9 @@ public abstract class FTBQuestsInventoryListenerMixin {
             if (candidates.isEmpty()) return;
 
             file.withPlayerContext(player, () -> {
-                // Inventory scan (expensive) is only needed for the submit path
+                // дорогой скан инвентаря нужен только для submit-пути
                 if (!craftingPath) {
-                    PlayerInventorySummary.build(player);
+                    dev.ftb.mods.ftbquests.util.PlayerInventorySummary.build(player);
                 }
                 for (Task task : candidates) {
                     task.submitTask(data, player, craftedItem);
@@ -74,7 +73,7 @@ public abstract class FTBQuestsInventoryListenerMixin {
             });
         });
 
-        ci.cancel();
+        ci.cancel(); // полностью заменили оригинал
     }
 
     @Inject(
@@ -90,12 +89,12 @@ public abstract class FTBQuestsInventoryListenerMixin {
         if (slot.container != this.player.getInventory()) { ci.cancel(); return; }
 
         int slotNum = slot.getContainerSlot();
-        var inv = this.player.getInventory();
-        int mainSize = inv.items.size(); // main+hotbar
+        int mainSize = this.player.getInventory().items.size(); // main+hotbar
         if (slotNum < 0 || slotNum >= mainSize) { ci.cancel(); return; }
 
-        // Ignore NBT noise: item and quantity unchanged
-        if (LastSeenSlotCache.isSameItemCount(this.player, slotNum, stack)) {
+        // 1) Игнорируем NBT-only «шум» (тот же item + count)
+        if (FTBQuestsOptimizerConfig.IGNORE_NBT_ONLY.get()
+                && LastSeenSlotCache.isSameItemCount(this.player, slotNum, stack)) {
             ci.cancel();
             return;
         }
@@ -104,13 +103,24 @@ public abstract class FTBQuestsInventoryListenerMixin {
         ServerQuestFile file = ServerQuestFile.INSTANCE;
         if (file == null) { ci.cancel(); return; }
 
-        int delay = Mth.clamp(file.getDetectionDelay(), 0, 200);
+        // 2) Задержка: override из конфига или FTBQ
+        int ftbqDelay = Mth.clamp(file.getDetectionDelay(), 0, 200);
+        int cfg = FTBQuestsOptimizerConfig.DELAY_OVERRIDE.get();
+        int delay = cfg >= 0 ? cfg : ftbqDelay;
+
+        // Немедленный путь FTBQ при delay == 0
         if (delay == 0) {
             FTBQuestsInventoryListener.detect(this.player, ItemStack.EMPTY, 0L);
-        } else {
-            // debounce: set the task only if it does not exist yet
-            DetectionDebouncer.scheduleIfNotQueued(this.player, delay);
+            ci.cancel();
+            return;
         }
+
+        if (FTBQuestsOptimizerConfig.DEBOUNCE.get()) {
+            DetectionDebouncer.scheduleIfNotQueued(this.player, delay); // использует Invoker внутри
+        } else {
+            DeferredInventoryDetectionAccessor.ftbq$invokeScheduleInventoryCheck(this.player, delay);
+        }
+
         ci.cancel();
     }
 }
