@@ -2,8 +2,10 @@ package com.bigenergy.ftbqopt.mixin;
 
 import com.bigenergy.ftbqopt.config.FTBQuestsOptimizerConfig;
 import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
+import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
+import dev.ftb.mods.ftbquests.quest.task.Task;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,7 +24,7 @@ import java.util.List;
  * - submitTask(): aggregated consumption (config-controlled), single addProgress(), early exit.
  */
 @Mixin(value = ItemTask.class, remap = false)
-public abstract class ItemTaskMixin {
+public abstract class ItemTaskMixin extends Task {
 
     @Shadow private ItemStack itemStack;
     @Shadow private long count;
@@ -30,6 +32,10 @@ public abstract class ItemTaskMixin {
 
     @Unique private List<ItemStack> ftbqopt$validCache;
     @Unique private int ftbqopt$validSig;
+
+    public ItemTaskMixin(long id, Quest quest) {
+        super(id, quest);
+    }
 
     @Unique
     private int ftbqopt$signature() {
@@ -63,7 +69,7 @@ public abstract class ItemTaskMixin {
             cir.setReturnValue(ftbqopt$validCache);
             return;
         }
-        List<ItemStack> res = ItemMatchingSystem.INSTANCE.getAllMatchingStacks(itemStack);
+        List<ItemStack> res = ItemMatchingSystem.INSTANCE.getAllMatchingStacks(itemStack, getQuestFile().holderLookup());
         ftbqopt$validCache = List.copyOf(res); // иммутабельная копия
         ftbqopt$validSig = sig;
         cir.setReturnValue(ftbqopt$validCache);
